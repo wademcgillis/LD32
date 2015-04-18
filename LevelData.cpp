@@ -106,6 +106,7 @@ void LevelData::reset(unsigned short _width, unsigned short _height)
 		foreground[i].extra = NULL;
 	}
 	objects.clear();
+	views.clear();
 }
 
 Tile *LevelData::getForegroundTile(unsigned short x, unsigned short y)
@@ -116,9 +117,25 @@ Tile *LevelData::getBackgroundTile(unsigned short x, unsigned short y)
 {
 	return &background[width * y + x];
 }
+bool LevelData::pointHitsView(unsigned short x, unsigned short y)
+{
+	ww::Rectanglei pt(x,y,1,1);
+	return rectHitsView(pt);
+}
+bool LevelData::rectHitsView(ww::Rectanglei rect)
+{
+	for(unsigned int i=0;i<views.size();i++)
+	{
+		if (views.at(i).intersects(rect))
+			return true;
+	}
+	return false;
+}
 
 bool LevelData::load(std::string path)
 {
+	//system("pause");
+	printf("===== %s =====\n",path.c_str());
 	FILE *f = fopen(path.c_str(),"rb");
 	if (f == NULL)
 		return false;
@@ -129,32 +146,86 @@ bool LevelData::load(std::string path)
 		// read size
 		fread(&width,sizeof(unsigned short),1,f);
 		fread(&height,sizeof(unsigned short),1,f);
+		printf("Size: %i, %i\n",width,height);
+		if (fgetc(f) != 123)
+		{
+			printf("Failed to read size.\n");
+			fclose(f);
+		}
+		// views
+		unsigned short viewCount = 0;
+		fread(&viewCount,sizeof(unsigned short),1,f);
+		printf("View count: %i\n",viewCount);
+		for(int i=0;i<viewCount;i++)
+		{
+			ww::Rectanglei rect;
+			fread(&rect.x,sizeof(int),1,f);
+			fread(&rect.y,sizeof(int),1,f);
+			fread(&rect.width,sizeof(int),1,f);
+			fread(&rect.height,sizeof(int),1,f);
+			views.push_back(rect);
+			printf("\t View #%i: %i, %i @ %i x %i\n",i,rect.x,rect.y,rect.width,rect.height);
+		}
+		if (fgetc(f) != 123)
+		{
+			printf("Failed to read views.\n");
+			fclose(f);
+		}
+		//
 		background = new Tile[width*height];
 		foreground = new Tile[width*height];
 		// read background tiles
-		Tile tile;
+		Tile *tile;
 		for(unsigned int i=0;i<width*height;i++)
 		{
-			tile = background[i];
-			fread(&tile.id,sizeof(unsigned short),1,f);
+			tile = &background[i];
+			fread(&tile->id,sizeof(unsigned short),1,f);
+			//printf("\tBGTile %i, %i: %i\n",i%width,i/width,tile.id);
 			if (fgetc(f) == 0)
-				tile.extra = NULL;
+				tile->extra = NULL;
 			else
 			{
-				tile.extra = new Extra();
+				tile->extra = new Extra();
 			}
+			if (tile->id > 15)
+			{
+				printf("%i, %i : %i\n",i%width,i/width,tile->id);
+				system("pause");
+			}
+			//if (i % width == width-1)
+			//	printf("\n");
+			
+		}
+		if (fgetc(f) != 123)
+		{
+			printf("Failed to read background tiles.\n");
+			fclose(f);
 		}
 		// read foreground tiles
 		for(unsigned int i=0;i<width*height;i++)
 		{
-			tile = foreground[i];
-			fread(&tile.id,sizeof(unsigned short),1,f);
+			tile = &foreground[i];
+			fread(&tile->id,sizeof(unsigned short),1,f);
+			//printf("\tFGTile %i, %i: %i\n",i%width,i/width,tile.id);
 			if (fgetc(f) == 0)
-				tile.extra = NULL;
+				tile->extra = NULL;
 			else
 			{
-				tile.extra = new Extra();
+				tile->extra = new Extra();
 			}
+			if (tile->id > 15)
+			{
+				printf("%i, %i : %i\n",i%width,i/width,tile->id);
+				system("pause");
+			}
+			//printf("%i,",tile.id);
+			//if (i % width == width-1)
+			//	printf("\n");
+		}
+		if (fgetc(f) != 123)
+		{
+			printf("Failed to read foreground tiles.\n");
+			fclose(f);
 		}
 		// read objects
 		unsigned short objectCount;
@@ -165,6 +236,7 @@ bool LevelData::load(std::string path)
 			fread(&object->id,sizeof(unsigned short),1,f);
 			fread(&object->x,sizeof(unsigned short),1,f);
 			fread(&object->y,sizeof(unsigned short),1,f);
+			printf("\tObject #%i: id %i. %i, %i\n",i,object->id,object->x,object->y);
 			if (fgetc(f) == 0)
 				object->extra = NULL;
 			else
@@ -172,6 +244,11 @@ bool LevelData::load(std::string path)
 				object->extra = new Extra();
 			}
 			objects.push_back(object);
+		}
+		if (fgetc(f) != 123)
+		{
+			printf("Failed to read objects.\n");
+			fclose(f);
 		}
 	}
 	return true;
@@ -185,6 +262,19 @@ bool LevelData::save(std::string path)
 	// write size
 	fwrite(&width,sizeof(unsigned short),1,f);
 	fwrite(&height,sizeof(unsigned short),1,f);
+	fputc(123,f);
+	// views
+	unsigned short viewCount = views.size();
+	fwrite(&viewCount,sizeof(unsigned short),1,f);
+	for(int i=0;i<viewCount;i++)
+	{
+		ww::Rectanglei rect = views.at(i);
+		fwrite(&rect.x,sizeof(int),1,f);
+		fwrite(&rect.y,sizeof(int),1,f);
+		fwrite(&rect.width,sizeof(int),1,f);
+		fwrite(&rect.height,sizeof(int),1,f);
+	}
+	fputc(123,f);
 	// read tiles
 	Tile tile;
 	for(unsigned int i=0;i<width*height;i++)
@@ -198,6 +288,7 @@ bool LevelData::save(std::string path)
 			fputc(1,f);
 		}
 	}
+	fputc(123,f);
 	for(unsigned int i=0;i<width*height;i++)
 	{
 		tile = foreground[i];
@@ -209,6 +300,7 @@ bool LevelData::save(std::string path)
 			fputc(1,f);
 		}
 	}
+	fputc(123,f);
 	// WRITE OBJECTS
 	unsigned short objectCount = objects.size();
 	fwrite(&objectCount,sizeof(unsigned short),1,f);
@@ -226,6 +318,7 @@ bool LevelData::save(std::string path)
 
 		}
 	}
+	fputc(123,f);
 	fclose(f);
 	return true;
 }
