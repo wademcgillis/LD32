@@ -50,4 +50,6 @@ Temporary Items
 *.suo
 Debug/*
 Release/*
+resources/*
+
 
