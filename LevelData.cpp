@@ -90,8 +90,40 @@ void writeExtraNumber(Extra *extra, std::string name, int number)
 
 
 
+void LevelData::wipeObjects()
+{
+	while(objects.size())
+	{
+		Object *obj = objects.at(0);
+		if (obj->extra)
+			obj->extra->extradata.clear();
+		delete obj->extra;
+		obj->extra = NULL;
+		delete obj;
+		objects.erase(objects.begin());
+	}
+}
+void LevelData::wipe()
+{
+	for(int i=0;i<width*height;i++)
+	{
+		background[i].id = TILE_NONE;
+		if (background[i].extra)
+			background[i].extra->extradata.clear();
+		delete background[i].extra;
+		background[i].extra = NULL;
 
-
+		foreground[i].id = TILE_NONE;
+		if (foreground[i].extra)
+			foreground[i].extra->extradata.clear();
+		delete foreground[i].extra;
+		foreground[i].extra = NULL;
+	}
+	delete background;
+	delete foreground;
+	wipeObjects();
+	views.clear();
+}
 void LevelData::reset(unsigned short _width, unsigned short _height)
 {
 	width = _width;
@@ -108,6 +140,7 @@ void LevelData::reset(unsigned short _width, unsigned short _height)
 	objects.clear();
 	views.clear();
 }
+
 
 Tile *LevelData::getForegroundTile(unsigned short x, unsigned short y)
 {
@@ -132,10 +165,102 @@ bool LevelData::rectHitsView(ww::Rectanglei rect)
 	return false;
 }
 
+
+
+
+
+
+
+void LevelData::freadExtra(Extra *extra, FILE *f)
+{
+	// read number of extra data
+	unsigned short extraCount = 0;
+	fread(&extraCount,sizeof(unsigned short),1,f);
+	printf("Reading %i extra data...\n",extraCount);
+	// read the data
+	ExtraData dat;
+	for(int i=0;i<extraCount;i++)
+	{
+		printf("\t#%i\n",i);
+		dat.name = "";
+		// read data name
+		unsigned short len = 0;
+		fread(&len,sizeof(unsigned short),1,f);
+		printf("\t\tname: %i: ",len); 
+		for(unsigned short j=0;j<len;j++)
+			dat.name += fgetc(f);
+		printf("%s\n",dat.name.c_str());
+		// read whether number or not
+		char yesno = fgetc(f);
+		if (yesno == 'Y')
+			dat.istext = true;
+		else if (yesno == 'N')
+			dat.istext = false;
+		else
+			printf("Failed to type of extra data.\n");
+		if (dat.istext)
+		{
+			dat.text = "";
+			dat.number = 0;
+			// read text
+			unsigned short len = 0;
+			fread(&len,sizeof(unsigned short),1,f);
+			printf("\t\ttext: %i: ",len);
+			for(unsigned short j=0;j<len;j++)
+				dat.text += fgetc(f);
+			printf("%s\n",dat.text.c_str());
+		}
+		else // read number
+		{
+			dat.text = "";
+			fread(&dat.number,sizeof(int),1,f);
+			printf("\t\tnumber: %i\n",dat.number);
+		}
+		extra->extradata.push_back(dat);
+	}
+}
+
+void LevelData::fwriteExtra(Extra *extra, FILE *f)
+{
+	// write number of extra data
+	unsigned short extraCount = extra->extradata.size();
+	fwrite(&extraCount,sizeof(unsigned short),1,f);
+	// write the data
+	for(int i=0;i<extra->extradata.size();i++)
+	{
+		// write data name
+		unsigned short len = extra->extradata.at(i).name.length();
+		fwrite(&len,sizeof(unsigned short),1,f);
+		for(unsigned short j=0;j<len;j++)
+			fputc(extra->extradata.at(i).name.at(j),f);
+		// write whether number or not
+		fputc(extra->extradata.at(i).istext?'Y':'N',f);
+		if (extra->extradata.at(i).istext)
+		{
+			// write text
+			unsigned short len = extra->extradata.at(i).text.length();
+			fwrite(&len,sizeof(unsigned short),1,f);
+			for(unsigned short j=0;j<len;j++)
+				fputc(extra->extradata.at(i).text.at(j),f);
+		}
+		else // write number
+			fwrite(&extra->extradata.at(i).number,sizeof(int),1,f);
+	}
+}
+
+
+
+
+
+
+
+
 bool LevelData::load(std::string path)
 {
 	//system("pause");
+	wipe();
 	printf("===== %s =====\n",path.c_str());
+	path = "resources/levels/"+path;
 	FILE *f = fopen(path.c_str(),"rb");
 	if (f == NULL)
 		return false;
@@ -186,11 +311,7 @@ bool LevelData::load(std::string path)
 			else
 			{
 				tile->extra = new Extra();
-			}
-			if (tile->id > 15)
-			{
-				printf("%i, %i : %i\n",i%width,i/width,tile->id);
-				system("pause");
+				freadExtra(tile->extra,f);
 			}
 			//if (i % width == width-1)
 			//	printf("\n");
@@ -212,11 +333,7 @@ bool LevelData::load(std::string path)
 			else
 			{
 				tile->extra = new Extra();
-			}
-			if (tile->id > 15)
-			{
-				printf("%i, %i : %i\n",i%width,i/width,tile->id);
-				system("pause");
+				freadExtra(tile->extra,f);
 			}
 			//printf("%i,",tile.id);
 			//if (i % width == width-1)
@@ -242,6 +359,7 @@ bool LevelData::load(std::string path)
 			else
 			{
 				object->extra = new Extra();
+				freadExtra(object->extra,f);
 			}
 			objects.push_back(object);
 		}
@@ -255,6 +373,7 @@ bool LevelData::load(std::string path)
 }
 bool LevelData::save(std::string path)
 {
+	path = "resources/levels/"+path;
 	FILE *f = fopen(path.c_str(),"wb");
 	if (f == NULL)		// why would
 		return false;	// this happen
@@ -286,6 +405,7 @@ bool LevelData::save(std::string path)
 		else
 		{
 			fputc(1,f);
+			fwriteExtra(tile.extra,f);
 		}
 	}
 	fputc(123,f);
@@ -298,6 +418,7 @@ bool LevelData::save(std::string path)
 		else
 		{
 			fputc(1,f);
+			fwriteExtra(tile.extra,f);
 		}
 	}
 	fputc(123,f);
@@ -315,7 +436,8 @@ bool LevelData::save(std::string path)
 			fputc(0,f);
 		else
 		{
-
+			fputc(1,f);
+			fwriteExtra(object->extra,f);
 		}
 	}
 	fputc(123,f);
