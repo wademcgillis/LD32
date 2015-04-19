@@ -83,6 +83,10 @@ bool doinit()
 	sprTiles[TILE_VINE] = MakeTileSprite(tex,128,32);
 	sprTiles[TILE_VINEORB] = MakeTileSprite(tex,208,64);
 	sprTiles[TILE_REDDARKGROUND] = MakeTileSprite(tex,128,16);
+	sprTiles[TILE_PURPLESMALLBRICKHOLE] = MakeTileSprite(tex,48,80);
+	sprTiles[TILE_SMALLBRICKHOLE] = MakeTileSprite(tex,64,80);
+	sprTiles[TILE_EMPTYSPECIALBLOCK] = MakeTileSprite(tex,128,80);
+	sprTiles[TILE_FULLSPECIALBLOCK] = MakeTileSprite(tex,128,96);
 
 	sprTiles[OBJECT_NONE] = MakeTileSprite(tex,0,0,256,256);
 	sprTiles[OBJECT_NONE]->setSize(64,64);
@@ -93,6 +97,9 @@ bool doinit()
 	sprTiles[OBJECT_CRAWLER] = MakeTileSprite(tex,224,0,32,32);
 	sprTiles[OBJECT_POWERUP_TOASTER] = MakeTileSprite(tex,128,48,32,32);
 	sprTiles[OBJECT_POWERUP_APPLE] = MakeTileSprite(tex,96,80,32,32);
+	sprTiles[OBJECT_DELILAH] = MakeTileSprite(tex,352,0,64,64);
+	sprTiles[OBJECT_BLUESPINYRODENT] = MakeTileSprite(tex,416,0,96,96);
+	sprTiles[OBJECT_SPECIAL_SWITCH] = MakeTileSprite(tex,144,80,32,32);
 
 	sprPowerupOrb[0] = MakeTileSprite(tex,0,160,32,32);
 	sprPowerupOrb[1] = MakeTileSprite(tex,32,160,32,32);
@@ -102,8 +109,13 @@ bool doinit()
 	sprFishWeapon[0] = MakeTileSprite(tex,32,48);
 	sprFishWeapon[1] = MakeTileSprite(tex,32,48);
 
-	sprToasterWeapon = MakeTileSprite(tex,80,48);
+	sprSpecialSwitch[0] = MakeTileSprite(tex,144,80,32,32);
+	sprSpecialSwitch[1] = MakeTileSprite(tex,176,80,32,32);
+
+	sprToast = MakeTileSprite(tex,80,48);
+	sprToasterWeapon = MakeTileSprite(tex,64,48);
 	sprAppleWeapon = MakeTileSprite(tex,32,64);
+	sprSpeedWeapon = MakeTileSprite(tex,80,80);
 
 
 	sprMessagebox[0] = MakeTileSprite(tex,112,160);
@@ -121,18 +133,36 @@ bool doinit()
 
 	sprCrawler[0] = MakeTileSprite(tex,224,0,32,32);
 	sprCrawler[1] = MakeTileSprite(tex,224,32,32,32);
+	sprCrawler[2] = MakeTileSprite(tex,256,0,32,32);
+	sprCrawler[3] = MakeTileSprite(tex,256,32,32,32);
 
-	sprCrawlerHurt[0] = MakeTileSprite(tex,256,0,32,32);
-	sprCrawlerHurt[1] = MakeTileSprite(tex,256,32,32,32);
+	sprCrawlerSparkle[0] = MakeTileSprite(tex,224,64,32,32);
+	sprCrawlerSparkle[1] = MakeTileSprite(tex,256,64,32,32);
+	sprPlayerSparkle[0] = MakeTileSprite(tex,224,96,32,32);
+	sprPlayerSparkle[1] = MakeTileSprite(tex,256,96,32,32);
+	sprBlueSpinyRodentSparkle[0] = MakeTileSprite(tex,224,128,32,32);
+	sprBlueSpinyRodentSparkle[1] = MakeTileSprite(tex,256,128,32,32);
 
-	sprCrawlerPop[0] = MakeTileSprite(tex,224,64,32,32);
-	sprCrawlerPop[1] = MakeTileSprite(tex,256,64,32,32);
+	sprBlueSpinyRodent[0] = MakeTileSprite(tex,416,0,96,96);
+	sprBlueSpinyRodent[1] = MakeTileSprite(tex,416,96,96,96);
+	sprBlueSpinyRodent[2] = MakeTileSprite(tex,416,192,96,96);
+	sprBlueSpinyRodent[3] = MakeTileSprite(tex,416,288,96,96);
 
 	sprPlay = MakeTileSprite(tex,160,224,32,32);
 	sprView = MakeTileSprite(tex,192,224,32,32);
 	sprObjects = MakeTileSprite(tex,64,192);
 	sprForeground = MakeTileSprite(tex,80,192);
 	sprBackground = MakeTileSprite(tex,96,192);
+
+	sprHUDHeart[0] = MakeTileSprite(tex,8,80,8,8);
+	sprHUDHeart[1] = MakeTileSprite(tex,0,80,8,8);
+
+	sprDelilah[0] = MakeTileSprite(tex,352,0,64,64);
+	sprDelilah[1] = MakeTileSprite(tex,352,64,64,64);
+	sprDelilah[2] = MakeTileSprite(tex,352,128,64,64);
+	sprDelilah[3] = MakeTileSprite(tex,288,0,64,64);
+	sprDelilah[4] = MakeTileSprite(tex,288,64,64,64);
+	sprDelilah[5] = MakeTileSprite(tex,288,128,64,64);
 
 	for(int i=0;i<8;i++)
 		sprLava[i] = MakeTileSprite(tex,144+2*i,32,16,16);
@@ -355,7 +385,7 @@ void doEditor()
 		r.height *= 16;
 		r.y += 64;
 
-		if (tempRectangle.width < 16 || tempRectangle.height < 14 || leveldata->rectHitsView(tempRectangle))
+		if (tempRectangle.width < 16 || tempRectangle.height < 12 || leveldata->rectHitsView(tempRectangle))
 		{
 			if (TICKER/8 % 2 == 0)
 				draw_rectangle(vb,r,0xFF0000FF,true,3);
@@ -368,8 +398,8 @@ void doEditor()
 				r2.y *= 16;
 				if (r2.width < 16)
 					r2.width = 16;
-				if (r2.height < 14)
-					r2.height = 14;
+				if (r2.height < 12)
+					r2.height = 12;
 				r2.width *= 16;
 				r2.height *= 16;
 				r2.y += 64;
@@ -584,7 +614,7 @@ void doEditor()
 						if (ww::input::mouse::isButtonReleased(ww::input::mouse::LEFT))
 						{
 							makingRectangle = false;
-							if (!leveldata->rectHitsView(tempRectangle) && tempRectangle.width >= 16 && tempRectangle.height >= 14)
+							if (!leveldata->rectHitsView(tempRectangle) && tempRectangle.width >= 16 && tempRectangle.height >= 12)
 							{
 								leveldata->views.push_back(tempRectangle);
 							}

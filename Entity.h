@@ -17,6 +17,7 @@ public:
 public:
 	Entity(Game *game);
 	~Entity();
+	virtual void onDestroy();
 	virtual void init();
 	virtual void update();
 	virtual void render(ww::gfx::VertexBatch *batch);

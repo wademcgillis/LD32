@@ -5,9 +5,12 @@ class obj_player : public Entity
 {
 public:
 	int vspeed;
+	bool faceLeft;
+	int hurtTimer;
+	int shootTick;
 public:
 	obj_player(Game *game);
-	~obj_player();
+	void onDestroy();
 	void init();
 	void update();
 	void render(ww::gfx::VertexBatch *batch);

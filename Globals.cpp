@@ -89,6 +89,7 @@ bool draw_bubblebutton(ww::gfx::VertexBatch *vb, int x, int y, ww::gfx::Sprite *
 	{
 		ww::vec2dui s = spr->getSize();
 		float f = (float)s.x / (float)s.y;
+		spr->setColor(0xFFFFFFFF);
 		spr->setPosition(x+8+16-16*f,y+8);
 		spr->setSize(32 * f,32);
 		vb->pushsprite(spr);
@@ -143,6 +144,7 @@ void drawTiles(ww::gfx::VertexBatch *vb, bool foreground, unsigned int color, bo
 					sprLava[(anim_ticker/8) % 8]->setPosition(16*(i-rect.x),16*(j-rect.y));
 				else
 					sprLava[(anim_ticker/8) % 8]->setPosition(16*i,16*j);
+				sprTiles[tile->id]->setColor(color);
 				vb->pushsprite(sprLava[(anim_ticker/8) % 8]);
 			}
 			else if (sprTiles[tile->id] != NULL)

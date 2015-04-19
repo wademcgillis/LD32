@@ -7,9 +7,11 @@ public:
 	int hspeed;
 	int vspeed;
 	int frame;
+	int hp;
+	unsigned char hurtTimer;
 public:
 	obj_crawler(Game *game);
-	~obj_crawler();
+	void onDestroy();
 	void init();
 	void update();
 	void render(ww::gfx::VertexBatch *batch);

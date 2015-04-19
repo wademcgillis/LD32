@@ -3,6 +3,9 @@
 #include "obj_player.h"
 #include "obj_crawler.h"
 #include "obj_burntplayer.h"
+#include "obj_delilah.h"
+#include "obj_specialswitch.h"
+//#include "obj_sonic.h"
 
 class obj_fishpowerup : public Entity
 {
@@ -88,6 +91,34 @@ public:
 	}
 };
 
+class obj_speedpowerup : public Entity
+{
+public:
+	int frame;
+public:
+	obj_speedpowerup(Game *_game) : Entity(_game)
+	{
+	}
+	void init()
+	{
+		hitbox = ww::Rectanglei(0,0,32,32);
+		type = OBJECT_POWERUP_SPEED;
+		frame = 0;
+		if (hasSpeedWeapon)
+			destroy();
+	}
+	void render(ww::gfx::VertexBatch *batch)
+	{
+		frame++;
+		if (frame == 32)
+			frame = 0;
+		sprPowerupOrb[((frame/4) % 4)]->setPosition(x,y + (int)(2*sin(frame * M_PI/16.f)));
+		batch->pushsprite(sprPowerupOrb[((frame/4) % 4)]);
+		sprSpeedWeapon->setPosition(x+8,y+8 + (int)(4*sin(frame * M_PI/16.f)));
+		batch->pushsprite(sprSpeedWeapon);
+	}
+};
+
 void Game::showMessage(std::string message)
 {
 	messages.push_back(message);
@@ -95,21 +126,56 @@ void Game::showMessage(std::string message)
 Entity *Game::addEntity(Entity *ent, int x, int y)
 {
 	entities.push_back(ent);
-	ent->init();
 	ent->x = x;
 	ent->y = y;
+	ent->init();
 	return ent;
 }
 void Game::start()
 {
 	player = NULL;
-	hasFishWeapon = false;
-	viewRect = ww::Rectanglei(0,0,256,224);
+	maxhp = 9;
+	hp = 9;
+	hasFishWeapon = true;
+	hasToasterWeapon = false;
+	hasAppleWeapon = false;
+	hasSpeedWeapon = false;
+	viewRect = ww::Rectanglei(0,0,256,192);
 	for(int i=0;i<leveldata->objects.size();i++)
 	{
 		if (leveldata->objects.at(i)->id == OBJECT_PLAYER)
 			player = (obj_player*)addEntity(new obj_player(this),16 * leveldata->objects.at(i)->x,16 * leveldata->objects.at(i)->y);
 	}
+	unsigned int x, y;
+	for(unsigned int i=0;i<leveldata->width*leveldata->height;i++)
+	{
+		x = i % leveldata->width;
+		y = i / leveldata->width;
+		if (leveldata->getForegroundTile(x,y)->id == TILE_EMPTYSPECIALBLOCK || leveldata->getForegroundTile(x,y)->id == TILE_FULLSPECIALBLOCK)
+			specialBlocks.push_back(ww::vec2dui(x,y));
+	}
+
+	
+	fightingBoss = false;
+	bossName = "";
+	bossHP = 0;
+	bossMaxHP = 0;
+	specialBlock = false;
+}
+void Game::swapSpecialBlocks()
+{
+	unsigned int x, y;
+	for(int i=0;i<specialBlocks.size();i++)
+	{
+		x = specialBlocks.at(i).x;
+		y = specialBlocks.at(i).y;
+
+		if (leveldata->getForegroundTile(x,y)->id == TILE_EMPTYSPECIALBLOCK)
+			leveldata->getForegroundTile(x,y)->id = TILE_FULLSPECIALBLOCK;
+		else if (leveldata->getForegroundTile(x,y)->id == TILE_FULLSPECIALBLOCK)
+			leveldata->getForegroundTile(x,y)->id = TILE_EMPTYSPECIALBLOCK;
+	}
+	specialBlock = !specialBlock;
 }
 void Game::clearAllEntities()
 {
@@ -118,17 +184,21 @@ void Game::clearAllEntities()
 		if (entities.at(i) != player)
 			entities.at(i)->destroy();
 	}
+	//entities.clear();
 	//if (player)
 	//	entities.push_back(player);
 }
 void Game::reconsitutePlayer()
 {
+	inViewRectPrevious = ww::Rectanglei(0,0,1,1);
+	printf("RECONSITUTE PLAYER!!!!!!!!\n");
+	hp = maxhp;
 	if (player == NULL)
 		player = (obj_player*)addEntity(new obj_player(this),lastPlayerEntrance.x,lastPlayerEntrance.y);
 }
 void Game::run()
 {
-	ww::gfx::setRenderSubrect(ww::gfx::MakeRenderSubrect(0,0,ww::gfx::window_width,ww::gfx::window_height));
+	ww::gfx::setRenderSubrect(ww::gfx::MakeRenderSubrect(0,ww::gfx::window_height*(32.f/224.f),ww::gfx::window_width,ww::gfx::window_height*(1-32.f/224.f)));
 	glClearColor(0x0C/255.f,0xBE/255.f,0xFF/255.f,1.f);
 	glClear(GL_COLOR_BUFFER_BIT);
 	tex->bind();
@@ -137,28 +207,39 @@ void Game::run()
 	{
 		for(int i=0;i<entities.size();i++)
 		{
+			/*if (entities.at(i)->isDestroyed())
+			{
+				if (entities.at(i) == player)
+					player = NULL;
+				entities.at(i)->onDestroy();
+				delete entities.at(i);
+				entities.erase(entities.begin()+i);
+				i--;
+				continue;
+			}*/
 			if (entities.at(i)->isDestroyed())
 			{
 				if (entities.at(i) == player)
 					player = NULL;
+				entities.at(i)->onDestroy();
 				delete entities.at(i);
 				entities.erase(entities.begin()+i);
 				i--;
 			}
-			entities.at(i)->update();
-			if (entities.at(i)->isDestroyed())
-			{
-				if (entities.at(i) == player)
-					player = NULL;
-				delete entities.at(i);
-				entities.erase(entities.begin()+i);
-				i--;
-			}
+			else
+				entities.at(i)->update();
+			if (i < entities.size())
+				if (entities.at(i)->isDestroyed())
+				{
+					if (entities.at(i) == player)
+						player = NULL;
+				}
 		}
 		for(int i=0;i<entities.size();i++)
 		{
 			if (entities.at(i)->isDestroyed())
 			{
+				entities.at(i)->onDestroy();
 				delete entities.at(i);
 				entities.erase(entities.begin()+i);
 				i--;
@@ -213,6 +294,16 @@ void Game::run()
 						addEntity(new obj_fishpowerup(this),pt.x,pt.y);
 					if (leveldata->objects.at(i)->id == OBJECT_CRAWLER)	
 						addEntity(new obj_crawler(this),pt.x,pt.y);
+					if (leveldata->objects.at(i)->id == OBJECT_DELILAH)	
+						addEntity(new obj_delilah(this),pt.x,pt.y);
+					if (leveldata->objects.at(i)->id == OBJECT_POWERUP_TOASTER)	
+						addEntity(new obj_toasterpowerup(this),pt.x,pt.y);
+					if (leveldata->objects.at(i)->id == OBJECT_POWERUP_APPLE)	
+						addEntity(new obj_applepowerup(this),pt.x,pt.y);
+					if (leveldata->objects.at(i)->id == OBJECT_SPECIAL_SWITCH)	
+						addEntity(new obj_specialswitch(this),pt.x,pt.y);
+					//if (leveldata->objects.at(i)->id == OBJECT_SONIC)	
+					//	addEntity(new obj_sonic(this),pt.x,pt.y);
 				}
 			}
 			// we changed views! make new bad guys / whatever and stuff
@@ -230,7 +321,13 @@ void Game::run()
 	//vb->pushsprite(sprTiles[leveldata->objects.at(0)->id]);
 
 	for(int i=0;i<entities.size();i++)
-		entities.at(i)->render(vb);
+	{
+		if (entities.at(i) != player)
+			if (!entities.at(i)->isDestroyed())
+				entities.at(i)->render(vb);
+	}
+	if (player)
+		player->render(vb);
 
 	if (powerupCountdown == 0)
 	{
@@ -279,11 +376,38 @@ void Game::run()
 	vb->update();
 	vb->draw();
 
+	ww::gfx::setRenderSubrect(ww::gfx::MakeRenderSubrect(0,0,ww::gfx::window_width,(ww::gfx::window_height*32)/224));
+	ww::gfx::setMatrix(NULL,-1,glm::value_ptr(glm::ortho(0.f,256.f,32.f,0.f,-1.f,1.f)));
+	glClearColor(0.f,0.f,0.f,1.f);
+	glClear(GL_COLOR_BUFFER_BIT);
+	vb->clear();
+	
+	drawHP(vb,16,8,"GERALDINE",hp,maxhp);
+
+	if (fightingBoss)
+		drawHP(vb,256-16-16-8*bossName.length(),8-8*(bossMaxHP > bossName.length()),bossName,bossHP,bossMaxHP);
+
+	//draw_text(vb,0,0,"",1);
+
+	vb->update();
+	vb->draw();
+
+
 	inViewRectPrevious = inViewRect;
 	if (ww::input::keyboard::isKeyPressed(ww::input::key::Escape))
 	{
 		end();
 		IN_EDITOR = true;
+	}
+}
+void Game::drawHP(ww::gfx::VertexBatch *batch, int x, int y, std::string name, int _hp, int _maxhp)
+{
+	int len = name.length();
+	draw_text(batch,x,y,"-"+name+"-",1);
+	for(int i=0;i<_maxhp;i++)
+	{
+		sprHUDHeart[(i < _hp)]->setPosition(x+8*(1+(i%len)),y+8*(1+(i/len)));
+		batch->pushsprite(sprHUDHeart[(i < _hp)]);
 	}
 }
 void Game::end()

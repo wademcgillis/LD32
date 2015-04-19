@@ -5,12 +5,9 @@
 obj_burntplayer::obj_burntplayer(Game *_game) : Entity(_game)
 {
 }
-obj_burntplayer::~obj_burntplayer()
-{
-}
 void obj_burntplayer::init()
 {
-	vspeed = -8;
+	vspeed = -10;
 }
 void obj_burntplayer::update()
 {
@@ -18,8 +15,8 @@ void obj_burntplayer::update()
 	y += vspeed;
 	if (y > game->viewRect.y + game->viewRect.height)
 	{
-		game->reconsitutePlayer();
 		game->clearAllEntities();
+		game->reconsitutePlayer();
 	}
 }
 void obj_burntplayer::render(ww::gfx::VertexBatch *batch)

@@ -47,16 +47,25 @@ GLOBAL ww::gfx::Sprite *sprPowerupOrb[4];
 GLOBAL ww::gfx::Sprite *sprFishWeapon[2];
 GLOBAL ww::gfx::Sprite *sprToasterWeapon;
 GLOBAL ww::gfx::Sprite *sprAppleWeapon;
+GLOBAL ww::gfx::Sprite *sprSpeedWeapon;
+GLOBAL ww::gfx::Sprite *sprToast;
 GLOBAL ww::gfx::Sprite *sprPlayerWhite;
 GLOBAL ww::gfx::Sprite *sprPlayerBurnt;
-GLOBAL ww::gfx::Sprite *sprCrawler[2];
-GLOBAL ww::gfx::Sprite *sprCrawlerHurt[2];
+GLOBAL ww::gfx::Sprite *sprHUDHeart[2];
+GLOBAL ww::gfx::Sprite *sprCrawler[4];
 GLOBAL ww::gfx::Sprite *sprCrawlerPop[2];
 GLOBAL ww::gfx::Sprite *sprLava[8];
+GLOBAL ww::gfx::Sprite *sprDelilah[6];
+GLOBAL ww::gfx::Sprite *sprBlueSpinyRodent[4];
+GLOBAL ww::gfx::Sprite *sprPlayerSparkle[2];
+GLOBAL ww::gfx::Sprite *sprCrawlerSparkle[2];
+GLOBAL ww::gfx::Sprite *sprBlueSpinyRodentSparkle[2];
+GLOBAL ww::gfx::Sprite *sprSpecialSwitch[2];
 
 GLOBAL bool hasFishWeapon;
 GLOBAL bool hasToasterWeapon;
 GLOBAL bool hasAppleWeapon;
+GLOBAL bool hasSpeedWeapon;
 
 GLOBAL unsigned int powerupCountdown;
 

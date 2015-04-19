@@ -14,6 +14,16 @@ public:
 	obj_player *player;
 	std::vector<std::string> messages;
 	ww::vec2di lastPlayerEntrance;
+
+	char hp;
+	char maxhp;
+
+	bool fightingBoss;
+	std::string bossName;
+	char bossHP;
+	char bossMaxHP;
+	std::vector<ww::vec2dui> specialBlocks;
+	bool specialBlock;
 public:
 	void start();
 	void run();
@@ -23,5 +33,9 @@ public:
 
 	void clearAllEntities();
 	void reconsitutePlayer();
+
+	void drawHP(ww::gfx::VertexBatch *batch, int x, int y, std::string name, int hp, int maxhp);
+
+	void swapSpecialBlocks();
 };
 #endif

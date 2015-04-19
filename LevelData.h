@@ -30,7 +30,11 @@ const unsigned short TILE_JUNGLEBACKGROUND = 22;
 const unsigned short TILE_VINE = 23;
 const unsigned short TILE_VINEORB = 24;
 const unsigned short TILE_REDDARKGROUND = 25;
-const unsigned short TILE_TERMINATOR = 26;
+const unsigned short TILE_PURPLESMALLBRICKHOLE = 26;
+const unsigned short TILE_SMALLBRICKHOLE = 27;
+const unsigned short TILE_EMPTYSPECIALBLOCK = 28;
+const unsigned short TILE_FULLSPECIALBLOCK = 29;
+const unsigned short TILE_TERMINATOR = 30;
 
 const unsigned short OBJECT_NONE = 64;
 const unsigned short OBJECT_PLAYER = 65;
@@ -38,7 +42,14 @@ const unsigned short OBJECT_POWERUP_FISH = 66;
 const unsigned short OBJECT_CRAWLER = 67;
 const unsigned short OBJECT_POWERUP_TOASTER = 68;
 const unsigned short OBJECT_POWERUP_APPLE = 69;
-const unsigned short OBJECT_TERMINATOR = 70;
+const unsigned short OBJECT_DELILAH = 70;
+const unsigned short OBJECT_BLUESPINYRODENT = 71;
+const unsigned short OBJECT_SPECIAL_SWITCH = 72;
+const unsigned short OBJECT_TERMINATOR = 73;
+
+const unsigned short OBJECT_POWERUP_SPEED = 100;
+const unsigned short OBJECT_FISH = 101;
+const unsigned short OBJECT_TOAST = 102;
 
 typedef struct {
 	std::string name;

@@ -12,6 +12,9 @@ Entity::Entity(Game *_game)
 Entity::~Entity()
 {
 }
+void Entity::onDestroy()
+{
+}
 void Entity::init()
 {
 }
@@ -34,11 +37,14 @@ Entity *Entity::collideObject(int _x, int _y, unsigned short objectType)
 		{
 			if (e->type == objectType)
 			{
-				other = e->hitbox;
-				other.x = e->x;
-				other.y = e->y;
-				if (hitbox.intersects(other))
-					return e;
+				if (!e->isDestroyed())
+				{
+					other = e->hitbox;
+					other.x = e->x;
+					other.y = e->y;
+					if (hitbox.intersects(other))
+						return e;
+				}
 			}
 		}
 	}
@@ -66,7 +72,7 @@ bool Entity::collideSolidTile(int _x, int _y)
 			switch(leveldata->getForegroundTile(i,j)->id)
 			{
 			case TILE_GRASS: case TILE_DIRT: case TILE_BRICK: case TILE_WOOD: case TILE_BRIDGE: case TILE_VOICEBOX:
-			case TILE_REDBRICK: case TILE_PURPLEBRICK: case TILE_JUNGLEGROUND: case TILE_VINEORB:
+			case TILE_REDBRICK: case TILE_PURPLEBRICK: case TILE_JUNGLEGROUND: case TILE_VINEORB: case TILE_FULLSPECIALBLOCK:
 				return true;
 				break;
 			}

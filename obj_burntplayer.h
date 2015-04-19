@@ -7,7 +7,6 @@ public:
 	int vspeed;
 public:
 	obj_burntplayer(Game *game);
-	~obj_burntplayer();
 	void init();
 	void update();
 	void render(ww::gfx::VertexBatch *batch);
