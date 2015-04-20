@@ -74,6 +74,11 @@ typedef struct {
 	Extra *extra;
 } Object;
 
+typedef struct {
+	ww::Rectanglei view;
+	Extra *extra;
+} View;
+
 class LevelData
 {
 public:
@@ -82,7 +87,7 @@ public:
 	Tile *background;
 	Tile *foreground;
 	std::vector<Object *> objects;
-	std::vector<ww::Rectanglei> views;
+	std::vector<View> views;
 	//
 public:
 	bool load(std::string path);
@@ -100,6 +105,8 @@ public:
 	void fwriteExtra(Extra *extra, FILE *handle);
 	void freadExtra(Extra *extra, FILE *handle);
 };
+
+extern void dumpExtra(Extra *extra);
 
 extern std::string readExtraString(Extra *extra, std::string name);
 extern int readExtraNumber(Extra *extra, std::string name);

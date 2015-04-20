@@ -48,6 +48,7 @@ Temporary Items
 *.vcproj
 *.sln
 *.suo
+*.zip
 Debug/*
 Release/*
 resources/*

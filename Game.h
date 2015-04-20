@@ -1,6 +1,7 @@
 #ifndef __WADEMCGILLISLD32__Game_h__
 #define __WADEMCGILLISLD32__Game_h__
 #include "Entity.h"
+#include <WadeWork/sfx.h>
 
 class obj_player;
 
@@ -15,6 +16,9 @@ public:
 	std::vector<std::string> messages;
 	ww::vec2di lastPlayerEntrance;
 
+	std::string currentMusicName;
+	ww::sfx::Sound *currentMusic;
+
 	char hp;
 	char maxhp;
 
@@ -24,6 +28,9 @@ public:
 	char bossMaxHP;
 	std::vector<ww::vec2dui> specialBlocks;
 	bool specialBlock;
+
+	bool titleScreen;
+	int flashTimer;
 public:
 	void start();
 	void run();

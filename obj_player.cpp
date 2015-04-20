@@ -5,6 +5,7 @@
 #include "obj_fish.h"
 #include "obj_sparkle.h"
 #include "obj_toast.h"
+#include "Sounds.h"
 
 obj_player::obj_player(Game *_game) : Entity(_game)
 {
@@ -24,22 +25,6 @@ void obj_player::init()
 }
 void obj_player::update()
 {
-	if (game->hp <= 0)
-	{
-		printf("MAKE DA SPARKLE\n");
-		((obj_sparkle*)game->addEntity(new obj_sparkle(game),x-8,y))->sparkleType = 5;
-		destroy();
-	}
-	if (hurtTimer > 0)
-		hurtTimer--;
-	else
-	{
-		if (collideObject(x,y,OBJECT_CRAWLER))
-		{
-			hurtTimer = 30;
-			game->hp--;
-		}
-	}
 	if (hasAppleWeapon)
 	{
 		if (ww::input::keyboard::isKeyDown(ww::input::key::Left))
@@ -52,10 +37,35 @@ void obj_player::update()
 			y += 8*(hasSpeedWeapon?2:1);
 		return;
 	}
+	if (game->hp <= 0)
+	{
+		printf("MAKE DA SPARKLE\n");
+		((obj_sparkle*)game->addEntity(new obj_sparkle(game),x-8,y))->sparkleType = 5;
+		destroy();
+		sfx_lose.play();
+	}
+	if (hurtTimer > 0)
+		hurtTimer--;
+	else
+	{
+		if (collideObject(x,y,OBJECT_CRAWLER))
+		{
+			hurtTimer = 30;
+			game->hp--;
+		}
+		if (collideObject(x,y,OBJECT_BLUESPINYRODENT))
+		{
+			hurtTimer = 30;
+			game->hp -= 3;
+		}
+	}
 	if (collideSolidTile(x,y+1))
 	{
 		if (ww::input::keyboard::isKeyDown(ww::input::key::Up))
+		{
+			LD32PlaySoundWarbled(&sfx_jump);
 			vspeed = -10;
+		}
 	}
 	else
 	{
@@ -77,6 +87,7 @@ void obj_player::update()
 	{
 		if (hasToasterWeapon && shootTick % 2 == 0)
 		{
+			LD32PlaySoundWarbled(&sfx_toast);
 			int bonus = 0;//4*(hasSpeedWeapon?2:1)*(ww::input::keyboard::isKeyDown(ww::input::key::Right) - ww::input::keyboard::isKeyDown(ww::input::key::Left));
 			((obj_toast*)game->addEntity(new obj_toast(game),x,y+8))->hspeed = bonus + ((faceLeft)?(-10):(10));
 		}
@@ -85,11 +96,14 @@ void obj_player::update()
 	{
 		if (hasFishWeapon && !hasToasterWeapon)
 		{
+			LD32PlaySoundWarbled(&sfx_fish);
 			int bonus = 0;//4*(hasSpeedWeapon?2:1)*(ww::input::keyboard::isKeyDown(ww::input::key::Right) - ww::input::keyboard::isKeyDown(ww::input::key::Left));
 			((obj_fish*)game->addEntity(new obj_fish(game),x,y+8))->hspeed = bonus + ((faceLeft)?(-6):(6));
 		}
 	}
 	y += vspeed;
+	if (vspeed > 24)
+		vspeed = 24;
 	if (collideSolidTile(x,y))
 	{
 		Tile *voicebox = collideTile(x,y,TILE_VOICEBOX);
@@ -122,6 +136,7 @@ void obj_player::update()
 		c->destroy();
 		powerupCountdown = 30;
 		game->showMessage("WISH FOR FISH");
+		sfx_obtain.play();
 	}
 
 	c = collideObject(x,y,OBJECT_POWERUP_TOASTER);
@@ -131,6 +146,7 @@ void obj_player::update()
 		c->destroy();
 		powerupCountdown = 30;
 		game->showMessage("STAY TOASTY MY FRIEND");
+		sfx_obtain.play();
 	}
 
 	c = collideObject(x,y,OBJECT_POWERUP_APPLE);
@@ -140,6 +156,7 @@ void obj_player::update()
 		c->destroy();
 		powerupCountdown = 30;
 		game->showMessage("THE END");
+		sfx_obtain.play();
 	}
 
 	c = collideObject(x,y,OBJECT_POWERUP_SPEED);
@@ -150,12 +167,14 @@ void obj_player::update()
 		powerupCountdown = 30;
 		game->showMessage("GOTTA GO FSAT");
 		x = 8 * (x/8);
+		sfx_obtain.play();
 	}
 
 	if (collideTile(x,y,TILE_LAVA))
 	{
 		game->addEntity(new obj_burntplayer(game),x,y);
 		destroy();
+		sfx_lose.play();
 	}
 	shootTick++;
 }

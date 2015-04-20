@@ -1,5 +1,22 @@
 #include "LevelData.h"
 
+void dumpExtra(Extra *extra)
+{
+	if (extra == NULL)
+		return;
+	printf("===Extra data contents===\n");
+	unsigned int s = extra->extradata.size();
+	for(unsigned int i=0;i<s;i++)
+	{
+		printf("\tName: %s\n",extra->extradata.at(i).name.c_str());
+		if (extra->extradata.at(i).istext)
+			printf("\tText: %s\n",extra->extradata.at(i).text.c_str());
+		else
+			printf("\tNumb: %s\n",extra->extradata.at(i).number);
+		printf("\t-----------------\n");
+	}
+}
+
 std::string readExtraString(Extra *extra, std::string name)
 {
 	unsigned int s = extra->extradata.size();
@@ -122,6 +139,11 @@ void LevelData::wipe()
 	delete background;
 	delete foreground;
 	wipeObjects();
+	for(int i=0;i<views.size();i++)
+	{
+		if (views.at(i).extra != NULL)
+			delete views.at(i).extra;
+	}
 	views.clear();
 }
 void LevelData::reset(unsigned short _width, unsigned short _height)
@@ -138,6 +160,11 @@ void LevelData::reset(unsigned short _width, unsigned short _height)
 		foreground[i].extra = NULL;
 	}
 	objects.clear();
+	for(int i=0;i<views.size();i++)
+	{
+		if (views.at(i).extra != NULL)
+			delete views.at(i).extra;
+	}
 	views.clear();
 }
 
@@ -159,7 +186,7 @@ bool LevelData::rectHitsView(ww::Rectanglei rect)
 {
 	for(unsigned int i=0;i<views.size();i++)
 	{
-		if (views.at(i).intersects(rect))
+		if (views.at(i).view.intersects(rect))
 			return true;
 	}
 	return false;
@@ -266,108 +293,120 @@ bool LevelData::load(std::string path)
 		return false;
 	char formatID[5] = {0,0,0,0,0};
 	fread(formatID,4,1,f);
-	if (strcmp(formatID,"poop") == 0)
+	if (strcmp(formatID,"poop") != 0 && strcmp(formatID,"peep") != 0)
+		return false;
+
+	// read size
+	fread(&width,sizeof(unsigned short),1,f);
+	fread(&height,sizeof(unsigned short),1,f);
+	printf("Size: %i, %i\n",width,height);
+	if (fgetc(f) != 123)
 	{
-		// read size
-		fread(&width,sizeof(unsigned short),1,f);
-		fread(&height,sizeof(unsigned short),1,f);
-		printf("Size: %i, %i\n",width,height);
-		if (fgetc(f) != 123)
+		printf("Failed to read size.\n");
+		fclose(f);
+	}
+	// views
+	unsigned short viewCount = 0;
+	fread(&viewCount,sizeof(unsigned short),1,f);
+	printf("View count: %i\n",viewCount);
+	for(int i=0;i<viewCount;i++)
+	{
+		View v;
+		fread(&v.view.x,sizeof(int),1,f);
+		fread(&v.view.y,sizeof(int),1,f);
+		fread(&v.view.width,sizeof(int),1,f);
+		fread(&v.view.height,sizeof(int),1,f);
+		if (strcmp(formatID,"peep") == 0)
 		{
-			printf("Failed to read size.\n");
-			fclose(f);
-		}
-		// views
-		unsigned short viewCount = 0;
-		fread(&viewCount,sizeof(unsigned short),1,f);
-		printf("View count: %i\n",viewCount);
-		for(int i=0;i<viewCount;i++)
-		{
-			ww::Rectanglei rect;
-			fread(&rect.x,sizeof(int),1,f);
-			fread(&rect.y,sizeof(int),1,f);
-			fread(&rect.width,sizeof(int),1,f);
-			fread(&rect.height,sizeof(int),1,f);
-			views.push_back(rect);
-			printf("\t View #%i: %i, %i @ %i x %i\n",i,rect.x,rect.y,rect.width,rect.height);
-		}
-		if (fgetc(f) != 123)
-		{
-			printf("Failed to read views.\n");
-			fclose(f);
-		}
-		//
-		background = new Tile[width*height];
-		foreground = new Tile[width*height];
-		// read background tiles
-		Tile *tile;
-		for(unsigned int i=0;i<width*height;i++)
-		{
-			tile = &background[i];
-			fread(&tile->id,sizeof(unsigned short),1,f);
-			//printf("\tBGTile %i, %i: %i\n",i%width,i/width,tile.id);
 			if (fgetc(f) == 0)
-				tile->extra = NULL;
+				v.extra = NULL;
 			else
 			{
-				tile->extra = new Extra();
-				freadExtra(tile->extra,f);
+				v.extra = new Extra();
+				freadExtra(v.extra,f);
 			}
-			//if (i % width == width-1)
-			//	printf("\n");
-			
 		}
-		if (fgetc(f) != 123)
+		else
+			v.extra = NULL;
+		views.push_back(v);
+		printf("\t View #%i: %i, %i @ %i x %i\n",i,v.view.x,v.view.y,v.view.width,v.view.height);
+	}
+	if (fgetc(f) != 123)
+	{
+		printf("Failed to read views.\n");
+		fclose(f);
+	}
+	//
+	background = new Tile[width*height];
+	foreground = new Tile[width*height];
+	// read background tiles
+	Tile *tile;
+	for(unsigned int i=0;i<width*height;i++)
+	{
+		tile = &background[i];
+		fread(&tile->id,sizeof(unsigned short),1,f);
+		//printf("\tBGTile %i, %i: %i\n",i%width,i/width,tile.id);
+		if (fgetc(f) == 0)
+			tile->extra = NULL;
+		else
 		{
-			printf("Failed to read background tiles.\n");
-			fclose(f);
+			tile->extra = new Extra();
+			freadExtra(tile->extra,f);
 		}
-		// read foreground tiles
-		for(unsigned int i=0;i<width*height;i++)
+		//if (i % width == width-1)
+		//	printf("\n");
+		
+	}
+	if (fgetc(f) != 123)
+	{
+		printf("Failed to read background tiles.\n");
+		fclose(f);
+	}
+	// read foreground tiles
+	for(unsigned int i=0;i<width*height;i++)
+	{
+		tile = &foreground[i];
+		fread(&tile->id,sizeof(unsigned short),1,f);
+		//printf("\tFGTile %i, %i: %i\n",i%width,i/width,tile.id);
+		if (fgetc(f) == 0)
+			tile->extra = NULL;
+		else
 		{
-			tile = &foreground[i];
-			fread(&tile->id,sizeof(unsigned short),1,f);
-			//printf("\tFGTile %i, %i: %i\n",i%width,i/width,tile.id);
-			if (fgetc(f) == 0)
-				tile->extra = NULL;
-			else
-			{
-				tile->extra = new Extra();
-				freadExtra(tile->extra,f);
-			}
-			//printf("%i,",tile.id);
-			//if (i % width == width-1)
-			//	printf("\n");
+			tile->extra = new Extra();
+			freadExtra(tile->extra,f);
 		}
-		if (fgetc(f) != 123)
+		//printf("%i,",tile.id);
+		//if (i % width == width-1)
+		//	printf("\n");
+	}
+	if (fgetc(f) != 123)
+	{
+		printf("Failed to read foreground tiles.\n");
+		fclose(f);
+	}
+	// read objects
+	unsigned short objectCount;
+	fread(&objectCount,sizeof(unsigned short),1,f);
+	for(unsigned short i=0;i<objectCount;i++)
+	{
+		Object *object = new Object();
+		fread(&object->id,sizeof(unsigned short),1,f);
+		fread(&object->x,sizeof(unsigned short),1,f);
+		fread(&object->y,sizeof(unsigned short),1,f);
+		printf("\tObject #%i: id %i. %i, %i\n",i,object->id,object->x,object->y);
+		if (fgetc(f) == 0)
+			object->extra = NULL;
+		else
 		{
-			printf("Failed to read foreground tiles.\n");
-			fclose(f);
+			object->extra = new Extra();
+			freadExtra(object->extra,f);
 		}
-		// read objects
-		unsigned short objectCount;
-		fread(&objectCount,sizeof(unsigned short),1,f);
-		for(unsigned short i=0;i<objectCount;i++)
-		{
-			Object *object = new Object();
-			fread(&object->id,sizeof(unsigned short),1,f);
-			fread(&object->x,sizeof(unsigned short),1,f);
-			fread(&object->y,sizeof(unsigned short),1,f);
-			printf("\tObject #%i: id %i. %i, %i\n",i,object->id,object->x,object->y);
-			if (fgetc(f) == 0)
-				object->extra = NULL;
-			else
-			{
-				object->extra = new Extra();
-				freadExtra(object->extra,f);
-			}
-			objects.push_back(object);
-		}
-		if (fgetc(f) != 123)
-		{
-			printf("Failed to read objects.\n");
-			fclose(f);
-		}
+		objects.push_back(object);
+	}
+	if (fgetc(f) != 123)
+	{
+		printf("Failed to read objects.\n");
+		fclose(f);
 	}
 	return true;
 }
@@ -377,7 +416,7 @@ bool LevelData::save(std::string path)
 	FILE *f = fopen(path.c_str(),"wb");
 	if (f == NULL)		// why would
 		return false;	// this happen
-	fwrite("poop",4,1,f); // DATA FORMAT ID
+	fwrite("peep",4,1,f); // DATA FORMAT ID
 	// write size
 	fwrite(&width,sizeof(unsigned short),1,f);
 	fwrite(&height,sizeof(unsigned short),1,f);
@@ -387,11 +426,18 @@ bool LevelData::save(std::string path)
 	fwrite(&viewCount,sizeof(unsigned short),1,f);
 	for(int i=0;i<viewCount;i++)
 	{
-		ww::Rectanglei rect = views.at(i);
-		fwrite(&rect.x,sizeof(int),1,f);
-		fwrite(&rect.y,sizeof(int),1,f);
-		fwrite(&rect.width,sizeof(int),1,f);
-		fwrite(&rect.height,sizeof(int),1,f);
+		View v = views.at(i);
+		fwrite(&v.view.x,sizeof(int),1,f);
+		fwrite(&v.view.y,sizeof(int),1,f);
+		fwrite(&v.view.width,sizeof(int),1,f);
+		fwrite(&v.view.height,sizeof(int),1,f);
+		if (v.extra == NULL)
+			fputc(0,f);
+		else
+		{
+			fputc(1,f);
+			fwriteExtra(v.extra,f);
+		}
 	}
 	fputc(123,f);
 	// read tiles

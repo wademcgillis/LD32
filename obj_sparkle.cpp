@@ -1,6 +1,7 @@
 #include "obj_sparkle.h"
 #include "Game.h"
 #include "Globals.h"
+#include "Sounds.h"
 
 obj_sparkle::obj_sparkle(Game *_game) : Entity(_game)
 {
@@ -11,6 +12,7 @@ void obj_sparkle::init()
 	type = -1;
 	sparkleType = 0;
 	frame = 17;
+	sfx_sparkle.play();
 }
 void obj_sparkle::update()
 {

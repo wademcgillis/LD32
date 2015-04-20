@@ -1,5 +1,44 @@
 #include "Globals.h"
 
+void LD32LoopSound(ww::sfx::Sound *sound)
+{
+	if (soundEnabled)
+		sound->loop();
+}
+void LD32PlaySound(ww::sfx::Sound *sound)
+{
+	if (soundEnabled)
+		sound->play();
+}
+
+void LD32PlaySoundWarbled(ww::sfx::Sound *sound, float factor)
+{
+	float freq = 1.f + ((rand()%2)-1) * factor;
+	sound->setFreq(freq);
+	sound->play();
+}
+
+GLOBAL void setSoundEnabled(bool enable)
+{
+	soundEnabled = enable;
+	if (soundEnabled)
+	{
+		for(int i=0;i<allSounds.size();i++)
+			allSounds.at(i)->setVolume(1.f);
+	}
+	else
+	{
+		for(int i=0;i<allSounds.size();i++)
+			allSounds.at(i)->setVolume(0.f);
+	}
+		
+}
+GLOBAL void LD32LoadSound(ww::sfx::Sound *sound, std::string path)
+{
+	sound->load(path.c_str());
+	allSounds.push_back(sound);
+}
+
 void draw_rectangle(ww::gfx::VertexBatch *vb, ww::Rectanglei rect, unsigned int color, bool outline, int thickness)
 {
 	if (outline)

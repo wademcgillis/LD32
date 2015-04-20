@@ -2,7 +2,7 @@
 #include "Game.h"
 #include "Globals.h"
 #include "obj_sparkle.h"
-
+#include "Sounds.h"
 obj_crawler::obj_crawler(Game *_game) : Entity(_game)
 {
 }
@@ -21,6 +21,8 @@ void obj_crawler::init()
 }
 void obj_crawler::update()
 {
+	if (!sfx_lumpy.isPlaying())
+		LD32PlaySoundWarbled(&sfx_lumpy);
 	if (hurtTimer > 0)
 		hurtTimer--;
 	Entity *e = NULL;
@@ -80,6 +82,7 @@ void obj_crawler::update()
 void obj_crawler::render(ww::gfx::VertexBatch *batch)
 {
 	int F = (hurtTimer/4 % 2)?0:2*(hurtTimer > 0);
+	sprCrawler[frame/4 + F]->setFlipX(hspeed > 0);
 	sprCrawler[frame/4 + F]->setPosition(x,y);
 	batch->pushsprite(sprCrawler[frame/4 + F]);
 }

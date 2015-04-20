@@ -5,7 +5,9 @@
 #include "obj_burntplayer.h"
 #include "obj_delilah.h"
 #include "obj_specialswitch.h"
-//#include "obj_sonic.h"
+#include "obj_bluespinyrodent.h"
+#include "obj_speedpowerup.h"
+#include "Sounds.h"
 
 class obj_fishpowerup : public Entity
 {
@@ -91,33 +93,7 @@ public:
 	}
 };
 
-class obj_speedpowerup : public Entity
-{
-public:
-	int frame;
-public:
-	obj_speedpowerup(Game *_game) : Entity(_game)
-	{
-	}
-	void init()
-	{
-		hitbox = ww::Rectanglei(0,0,32,32);
-		type = OBJECT_POWERUP_SPEED;
-		frame = 0;
-		if (hasSpeedWeapon)
-			destroy();
-	}
-	void render(ww::gfx::VertexBatch *batch)
-	{
-		frame++;
-		if (frame == 32)
-			frame = 0;
-		sprPowerupOrb[((frame/4) % 4)]->setPosition(x,y + (int)(2*sin(frame * M_PI/16.f)));
-		batch->pushsprite(sprPowerupOrb[((frame/4) % 4)]);
-		sprSpeedWeapon->setPosition(x+8,y+8 + (int)(4*sin(frame * M_PI/16.f)));
-		batch->pushsprite(sprSpeedWeapon);
-	}
-};
+
 
 void Game::showMessage(std::string message)
 {
@@ -136,7 +112,7 @@ void Game::start()
 	player = NULL;
 	maxhp = 9;
 	hp = 9;
-	hasFishWeapon = true;
+	hasFishWeapon = false;
 	hasToasterWeapon = false;
 	hasAppleWeapon = false;
 	hasSpeedWeapon = false;
@@ -154,13 +130,17 @@ void Game::start()
 		if (leveldata->getForegroundTile(x,y)->id == TILE_EMPTYSPECIALBLOCK || leveldata->getForegroundTile(x,y)->id == TILE_FULLSPECIALBLOCK)
 			specialBlocks.push_back(ww::vec2dui(x,y));
 	}
-
-	
+	currentMusicName = "```````````````````````````````````````````````````````````````````";
+	currentMusic = &bgm_titletheme;
+	currentMusic->loop();
 	fightingBoss = false;
 	bossName = "";
 	bossHP = 0;
 	bossMaxHP = 0;
 	specialBlock = false;
+
+	titleScreen = true;
+	flashTimer = -5000;
 }
 void Game::swapSpecialBlocks()
 {
@@ -198,6 +178,54 @@ void Game::reconsitutePlayer()
 }
 void Game::run()
 {
+	if (titleScreen)
+	{
+		static int nope = 10;
+		if (nope > 0)
+			nope--;
+		ww::gfx::setRenderSubrect(ww::gfx::MakeRenderSubrect(0,0,ww::gfx::window_width,ww::gfx::window_height));
+		glClearColor(0x0C/255.f,0xBE/255.f,0xFF/255.f,1.f);
+		glClear(GL_COLOR_BUFFER_BIT);
+		tex->bind();
+		ww::gfx::setMatrix(NULL,-1,glm::value_ptr(glm::ortho(0.f,256.f,224.f,0.f,-1.f,1.f)));
+		vb->clear();
+
+		sprLogo->setPosition(16,8);
+		vb->pushsprite(sprLogo);
+
+		std::string str = "";
+		
+		if (flashTimer < 0 || (flashTimer > 0 && (flashTimer) % 2))
+		{
+			str = "-PRESS SPACE-";
+			draw_text(vb,(256-str.length()*8)/2,144,str,1);
+		}
+
+		if (flashTimer > 0)
+			flashTimer--;
+
+		if (flashTimer == 0)
+			titleScreen = false;
+
+		if (ww::input::keyboard::isKeyPressed(ww::input::key::Space) && flashTimer < 0 && nope == 0)
+		{
+			flashTimer = 24;
+			currentMusic->stop();
+			currentMusic = &bgm_starttheme;
+			currentMusic->loop();
+		}
+
+		str = "PRESS M TO MUTE";
+		draw_text(vb,(256-str.length()*8)/2,192,str,1);
+
+		str = "BY WADE MCGILLIS";
+		draw_text(vb,(256-str.length()*8)/2,208,str,1);
+
+		vb->update();
+		vb->draw();
+
+		return;
+	}
 	ww::gfx::setRenderSubrect(ww::gfx::MakeRenderSubrect(0,ww::gfx::window_height*(32.f/224.f),ww::gfx::window_width,ww::gfx::window_height*(1-32.f/224.f)));
 	glClearColor(0x0C/255.f,0xBE/255.f,0xFF/255.f,1.f);
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -251,17 +279,19 @@ void Game::run()
 		powerupCountdown--;
 
 	bool inAView = false;
+	View *view = NULL;
 	if (player != NULL)
 	{
 		ww::Rectanglei testRect(player->x+8,player->y+16,1,1);
 		for(int i=0;i<leveldata->views.size();i++)
 		{
-			inViewRect.x = leveldata->views.at(i).x * 16;
-			inViewRect.y = leveldata->views.at(i).y * 16;
-			inViewRect.width = leveldata->views.at(i).width * 16;
-			inViewRect.height = leveldata->views.at(i).height * 16;
+			inViewRect.x = leveldata->views.at(i).view.x * 16;
+			inViewRect.y = leveldata->views.at(i).view.y * 16;
+			inViewRect.width = leveldata->views.at(i).view.width * 16;
+			inViewRect.height = leveldata->views.at(i).view.height * 16;
 			if (testRect.intersects(inViewRect))
 			{
+				view = &leveldata->views.at(i);
 				inAView = true;
 				i = leveldata->views.size();
 			}
@@ -285,6 +315,55 @@ void Game::run()
 			lastPlayerEntrance.x = player->x;
 			lastPlayerEntrance.y = player->y;
 
+			if (!hasAppleWeapon)
+			{
+				std::string music = "~~~~~~~~~~~~~~~~~~~";
+				if (view->extra == NULL)
+				{
+					printf("View extra is NULL!\n");
+					music = "~~~~~~!!!!!!~~~~~~******";
+				}
+				else
+				{
+					printf("View extra exists!\n");
+					music = readExtraString(view->extra,"MUSIC");
+					dumpExtra(view->extra);
+				}
+
+				if (music != currentMusicName)
+				{
+					currentMusicName = music;
+					printf("About to play: %s\n",currentMusicName.c_str());
+					if (currentMusic != NULL)
+						currentMusic->stop();
+					if (currentMusicName == "SPINY")
+						currentMusic = &bgm_spinytheme;
+					else if (currentMusicName == "JUNGLE")
+						currentMusic = &bgm_jungletheme;
+					else if (currentMusicName == "PURPLE")
+						currentMusic = &bgm_castletheme;
+					else if (currentMusicName == "BOSS")
+						currentMusic = &bgm_bosstheme;
+					else if (currentMusicName == "SECRET")
+						currentMusic = &bgm_secret;
+					else if (currentMusicName == "CANYON")
+						currentMusic = &bgm_canyontheme;
+					else if (currentMusicName == "GARDEN")
+						currentMusic = &bgm_gardentheme;
+					else if (currentMusicName == "LAVA")
+						currentMusic = &bgm_lavatheme;
+					else
+						currentMusic = NULL;
+					if (currentMusic != NULL)
+					{
+						printf("YEEHAW!\n");
+						if (hasSpeedWeapon)
+							currentMusic->setFreq(1.3f);
+						currentMusic->loop();
+					}
+				}
+			}
+
 			for(int i=0;i<leveldata->objects.size();i++)
 			{
 				ww::Rectanglei pt(16 * leveldata->objects.at(i)->x,16 * leveldata->objects.at(i)->y,1,1);
@@ -302,8 +381,8 @@ void Game::run()
 						addEntity(new obj_applepowerup(this),pt.x,pt.y);
 					if (leveldata->objects.at(i)->id == OBJECT_SPECIAL_SWITCH)	
 						addEntity(new obj_specialswitch(this),pt.x,pt.y);
-					//if (leveldata->objects.at(i)->id == OBJECT_SONIC)	
-					//	addEntity(new obj_sonic(this),pt.x,pt.y);
+					if (leveldata->objects.at(i)->id == OBJECT_BLUESPINYRODENT)	
+						addEntity(new obj_bluespinyrodent(this),pt.x,pt.y);
 				}
 			}
 			// we changed views! make new bad guys / whatever and stuff
@@ -369,7 +448,16 @@ void Game::run()
 
 			draw_text(vb,xx+16,yy+20,messages.at(0),1,0xFFFFFFFF);
 			if (ww::input::keyboard::isKeyPressed(ww::input::key::Space))
+			{
+				if (messages.at(0) == "THE END")
+				{
+					if (currentMusic != NULL)
+						currentMusic->stop();
+					currentMusic = &bgm_endtheme;
+					currentMusic->loop();
+				}
 				messages.erase(messages.begin());
+			}
 		}
 	}
 
@@ -394,7 +482,7 @@ void Game::run()
 
 
 	inViewRectPrevious = inViewRect;
-	if (ww::input::keyboard::isKeyPressed(ww::input::key::Escape))
+	if (ww::input::keyboard::isKeyPressed(ww::input::key::Escape) && !RELEASE)
 	{
 		end();
 		IN_EDITOR = true;

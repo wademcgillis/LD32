@@ -36,6 +36,15 @@ GLOBAL unsigned short CURRENT_OBJECT;
 
 GLOBAL bool IN_EDITOR;
 
+GLOBAL bool RELEASE;
+
+
+GLOBAL std::vector<ww::sfx::Sound*> allSounds;
+GLOBAL bool soundEnabled;
+GLOBAL void setSoundEnabled(bool enable);
+GLOBAL void LD32LoadSound(ww::sfx::Sound *sound, std::string path);
+GLOBAL void LD32PlaySoundWarbled(ww::sfx::Sound *sound, float factor = 0.1f);
+
 GLOBAL ww::gfx::Texture *tex;
 GLOBAL ww::gfx::Sprite *highlightybob[2];
 GLOBAL ww::gfx::Sprite *font[64];
@@ -61,6 +70,7 @@ GLOBAL ww::gfx::Sprite *sprPlayerSparkle[2];
 GLOBAL ww::gfx::Sprite *sprCrawlerSparkle[2];
 GLOBAL ww::gfx::Sprite *sprBlueSpinyRodentSparkle[2];
 GLOBAL ww::gfx::Sprite *sprSpecialSwitch[2];
+GLOBAL ww::gfx::Sprite *sprLogo;
 
 GLOBAL bool hasFishWeapon;
 GLOBAL bool hasToasterWeapon;

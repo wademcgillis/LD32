@@ -2,7 +2,7 @@
 #define MAIN
 #include "Globals.h"
 #include "Game.h"
-
+#include "Sounds.h"
 
 bool doinit();
 bool dorun();
@@ -12,18 +12,54 @@ void doEditor();
 
 Game *game;
 
-int main()
+#include <SFML/Window.hpp>
+namespace ww
+{
+	namespace gfx
+	{
+		extern sf::Window *window;
+	}
+}
+
+int WinMain(HINSTANCE hInstnace, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
 	ww::gfx::setWindowSize(256*3,224*3);
 	ww::sys::setInitCallback(doinit);
 	ww::sys::setTimerCallback(dorun);
 	ww::sys::setDeinitCallback(doend);
 	ww::sys::setTimerResolution(30);
-	ww::sys::setup(ww::sys::CONFIG_OPENGL1 | ww::sys::CONFIG_DISABLE_OPENAL | ww::sys::CONFIG_DISABLE_OPENGL_DEPTHBUFFER);
+	ww::sys::setup(ww::sys::CONFIG_OPENGL1 | ww::sys::CONFIG_DISABLE_OPENGL_DEPTHBUFFER);//ww::sys::CONFIG_DISABLE_OPENAL | 
 }
 
 bool doinit()
 {
+	ww::gfx::window->setTitle("¡WHOA pizza!");
+	RELEASE = false;
+
+	LD32LoadSound(&bgm_spinytheme,"resources/sfx/spinytheme.ogg");
+	LD32LoadSound(&bgm_titletheme,"resources/sfx/titletheme.ogg");
+	LD32LoadSound(&bgm_starttheme,"resources/sfx/starttheme.ogg");
+	LD32LoadSound(&bgm_endtheme,"resources/sfx/endtheme.ogg");
+	LD32LoadSound(&bgm_jungletheme,"resources/sfx/jungle.ogg");
+	LD32LoadSound(&bgm_castletheme,"resources/sfx/purplecastle.ogg");
+	LD32LoadSound(&bgm_bosstheme,"resources/sfx/delilah.ogg");
+	LD32LoadSound(&bgm_secret,"resources/sfx/secret.ogg");
+	LD32LoadSound(&bgm_gardentheme,"resources/sfx/gardentheme.ogg");
+	LD32LoadSound(&bgm_canyontheme,"resources/sfx/canyontheme.ogg");
+	LD32LoadSound(&bgm_lavatheme,"resources/sfx/lavatheme.ogg");
+
+	LD32LoadSound(&sfx_burp1,"resources/sfx/burp1.ogg");
+	LD32LoadSound(&sfx_burp2,"resources/sfx/burp2.ogg");
+	LD32LoadSound(&sfx_obtain,"resources/sfx/obtain.ogg");
+	LD32LoadSound(&sfx_lumpy,"resources/sfx/lumpy.ogg");
+	LD32LoadSound(&sfx_fish,"resources/sfx/fish.ogg");
+	LD32LoadSound(&sfx_toast,"resources/sfx/toast.ogg");
+	LD32LoadSound(&sfx_lose,"resources/sfx/lose.ogg");
+	LD32LoadSound(&sfx_jump,"resources/sfx/jump.ogg");
+	LD32LoadSound(&sfx_sparkle,"resources/sfx/sparkle.ogg");
+
+	setSoundEnabled(true);
+
 	tex = new ww::gfx::Texture();
 	tex->load("resources/gfx/texture.png");
 
@@ -107,7 +143,7 @@ bool doinit()
 	sprPowerupOrb[3] = MakeTileSprite(tex,32,160,32,32);
 
 	sprFishWeapon[0] = MakeTileSprite(tex,32,48);
-	sprFishWeapon[1] = MakeTileSprite(tex,32,48);
+	sprFishWeapon[1] = MakeTileSprite(tex,48,48);
 
 	sprSpecialSwitch[0] = MakeTileSprite(tex,144,80,32,32);
 	sprSpecialSwitch[1] = MakeTileSprite(tex,176,80,32,32);
@@ -164,6 +200,8 @@ bool doinit()
 	sprDelilah[4] = MakeTileSprite(tex,288,64,64,64);
 	sprDelilah[5] = MakeTileSprite(tex,288,128,64,64);
 
+	sprLogo = MakeTileSprite(tex,0,256,224,128);
+
 	for(int i=0;i<8;i++)
 		sprLava[i] = MakeTileSprite(tex,144+2*i,32,16,16);
 
@@ -193,6 +231,20 @@ bool doinit()
 
 	game = new Game();
 
+	FILE *check = fopen("resources/RELEASE.txt","rb");
+	if (check != NULL)
+	{
+		RELEASE = true;
+		fclose(check);
+	}
+
+	if (RELEASE)
+	{
+		leveldata->load("game.data");
+		IN_EDITOR = false;
+		game->start();
+	}
+
 	return true;
 }
 
@@ -201,7 +253,11 @@ bool dorun()
 	if (IN_EDITOR)
 		doEditor();
 	else
+	{
+		if (ww::input::keyboard::isKeyPressed(ww::input::key::M))
+			setSoundEnabled(!soundEnabled);
 		game->run();
+	}
 	return true;
 }
 
@@ -364,7 +420,7 @@ void doEditor()
 	for(unsigned int i=0;i<leveldata->views.size();i++)
 	{
 		unsigned int colors[6] = {0xFF0000, 0x00FF00, 0x0000FF, 0xFF00FF, 0x00FFFF, 0xFFFF00}; 
-		ww::Rectanglei r = leveldata->views.at(i);
+		ww::Rectanglei r = leveldata->views.at(i).view;
 		r.x -= viewX;
 		r.y -= viewY;
 		r.x *= 16;
@@ -616,7 +672,10 @@ void doEditor()
 							makingRectangle = false;
 							if (!leveldata->rectHitsView(tempRectangle) && tempRectangle.width >= 16 && tempRectangle.height >= 12)
 							{
-								leveldata->views.push_back(tempRectangle);
+								View v;
+								v.extra = NULL;
+								v.view = tempRectangle;
+								leveldata->views.push_back(v);
 							}
 						}
 					}
@@ -624,18 +683,52 @@ void doEditor()
 					{
 						if (ww::input::mouse::isButtonPressed(ww::input::mouse::RIGHT))
 						{
-							if (leveldata->pointHitsView(tileX,tileY))
+							if (ww::input::keyboard::isKeyDown(ww::input::key::LShift) || ww::input::keyboard::isKeyDown(ww::input::key::RShift))
 							{
-								ww::Rectanglei pt(tileX,tileY,1,1);
-								bool go = true;
-								for(unsigned int i=0;i<leveldata->views.size() && go;i++)
+								if (leveldata->pointHitsView(tileX,tileY))
 								{
-									if (leveldata->views.at(i).intersects(pt))
+									ww::Rectanglei pt(tileX,tileY,1,1);
+									bool go = true;
+									for(unsigned int i=0;i<leveldata->views.size() && go;i++)
 									{
-										leveldata->views.erase(leveldata->views.begin() + i);
-										go = false;
+										if (leveldata->views.at(i).view.intersects(pt))
+										{
+											if (leveldata->views.at(i).extra != NULL)
+											{
+												delete leveldata->views.at(i).extra;
+												leveldata->views.at(i).extra = NULL;
+											}
+											leveldata->views.erase(leveldata->views.begin() + i);
+											go = false;
+										}
 									}
 								}
+							}
+							else					// MODIFY THE EXTRA 
+							{
+								if (leveldata->pointHitsView(tileX,tileY))
+								{
+									ww::Rectanglei pt(tileX,tileY,1,1);
+									bool go = true;
+									for(unsigned int i=0;i<leveldata->views.size() && go;i++)
+									{
+										if (leveldata->views.at(i).view.intersects(pt))
+										{
+											/*if (leveldata->views.at(i).extra != NULL)
+											{
+												delete leveldata->views.at(i).extra;
+												leveldata->views.at(i).extra = NULL;
+											}
+											leveldata->views.erase(leveldata->views.begin() + i);*/
+											if (leveldata->views.at(i).extra == NULL)
+												leveldata->views.at(i).extra = new Extra();
+											EXTRAMODIFIER = leveldata->views.at(i).extra;
+											editingExtraName = false;
+											editingExtraValue = false;
+											go = false;
+										}
+									}
+								}								
 							}
 						}
 					}
@@ -691,7 +784,6 @@ void doEditor()
 										EXTRAMODIFIER = leveldata->getForegroundTile(tileX,tileY)->extra;
 										editingExtraName = false;
 										editingExtraValue = false;
-
 									}
 								}
 							}
